@@ -54,6 +54,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.view.inputmethod.EditorInfo;
@@ -88,9 +89,9 @@ public class FloatingSearchView extends FrameLayout {
 
     private final static String TAG = FloatingSearchView.class.getSimpleName();
     //The CardView's top or bottom height used for its shadow
-    private final static int CARD_VIEW_TOP_BOTTOM_SHADOW_HEIGHT = 3;
+    private final static int CARD_VIEW_TOP_BOTTOM_SHADOW_HEIGHT = 8;
     //The CardView's (default) corner radius height
-    private final static int CARD_VIEW_CORNERS_HEIGHT = 2;
+    private final static int CARD_VIEW_CORNERS_HEIGHT = -8;
     private final static int CARD_VIEW_CORNERS_AND_TOP_BOTTOM_SHADOW_HEIGHT =
             CARD_VIEW_TOP_BOTTOM_SHADOW_HEIGHT + CARD_VIEW_CORNERS_HEIGHT;
 
@@ -108,7 +109,7 @@ public class FloatingSearchView extends FrameLayout {
 
     private final static int MENU_ICON_ANIM_DURATION = 250;
 
-    private final static Interpolator SUGGEST_ITEM_ADD_ANIM_INTERPOLATOR = new LinearInterpolator();
+    private final static Interpolator SUGGEST_ITEM_ADD_ANIM_INTERPOLATOR = new AccelerateInterpolator();
 
     public final static int LEFT_ACTION_MODE_SHOW_HAMBURGER = 1;
     public final static int LEFT_ACTION_MODE_SHOW_SEARCH = 2;
@@ -183,10 +184,7 @@ public class FloatingSearchView extends FrameLayout {
     private boolean mSkipTextChangeEvent;
     private View.OnClickListener mLeftMenuClickListener;
 
-    private View mDivider;
-    private int mDividerColor;
-
-    private RelativeLayout mSuggestionsSection;
+    private FrameLayout mSuggestionsSection;
     private View mSuggestionListContainer;
     private RecyclerView mSuggestionsList;
     private int mSuggestionTextColor = -1;
@@ -378,9 +376,7 @@ public class FloatingSearchView extends FrameLayout {
         mClearButton.setImageDrawable(mIconClear);
         mMenuView = (MenuView) findViewById(R.id.menu_view);
 
-        mDivider = findViewById(R.id.divider);
-
-        mSuggestionsSection = (RelativeLayout) findViewById(R.id.search_suggestions_section);
+        mSuggestionsSection = (FrameLayout) findViewById(R.id.search_suggestions_section);
         mSuggestionListContainer = findViewById(R.id.suggestions_list_container);
         mSuggestionsList = (RecyclerView) findViewById(R.id.suggestions_list);
 
@@ -399,33 +395,6 @@ public class FloatingSearchView extends FrameLayout {
         super.onLayout(changed, l, t, r, b);
 
         if (mIsInitialLayout) {
-
-            //we need to add 5dp to the mSuggestionsSection because we are
-            //going to move it up by 5dp in order to cover the search bar's
-            //shadow padding and rounded corners. We also need to add an additional 10dp to
-            //mSuggestionsSection in order to hide mSuggestionListContainer's
-            //rounded corners and shadow for both, top and bottom.
-            int addedHeight = 3 * Util.dpToPx(CARD_VIEW_CORNERS_AND_TOP_BOTTOM_SHADOW_HEIGHT);
-            final int finalHeight = mSuggestionsSection.getHeight() + addedHeight;
-            mSuggestionsSection.getLayoutParams().height = finalHeight;
-            mSuggestionsSection.requestLayout();
-            ViewTreeObserver vto = mSuggestionListContainer.getViewTreeObserver();
-            vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-                @Override
-                public void onGlobalLayout() {
-
-                    if (mSuggestionsSection.getHeight() == finalHeight) {
-                        Util.removeGlobalLayoutObserver(mSuggestionListContainer, this);
-
-                        mIsSuggestionsSectionHeightSet = true;
-                        moveSuggestListToInitialPos();
-                        if (mSuggestionSecHeightListener != null) {
-                            mSuggestionSecHeightListener.onSuggestionSecHeightSet();
-                            mSuggestionSecHeightListener = null;
-                        }
-                    }
-                }
-            });
 
             mIsInitialLayout = false;
 
@@ -468,7 +437,6 @@ public class FloatingSearchView extends FrameLayout {
                     R.styleable.FloatingSearchView_floatingSearch_searchBarWidth,
                     ViewGroup.LayoutParams.MATCH_PARENT);
             mQuerySection.getLayoutParams().width = searchBarWidth;
-            mDivider.getLayoutParams().width = searchBarWidth;
             mSuggestionListContainer.getLayoutParams().width = searchBarWidth;
             int searchBarLeftMargin = a.getDimensionPixelSize(
                     R.styleable.FloatingSearchView_floatingSearch_searchBarMarginLeft,
@@ -480,19 +448,14 @@ public class FloatingSearchView extends FrameLayout {
                     R.styleable.FloatingSearchView_floatingSearch_searchBarMarginRight,
                     ATTRS_SEARCH_BAR_MARGIN_DEFAULT);
             LayoutParams querySectionLP = (LayoutParams) mQuerySection.getLayoutParams();
-            LayoutParams dividerLP = (LayoutParams) mDivider.getLayoutParams();
             LinearLayout.LayoutParams suggestListSectionLP =
                     (LinearLayout.LayoutParams) mSuggestionsSection.getLayoutParams();
             int cardPadding = Util.dpToPx(CARD_VIEW_TOP_BOTTOM_SHADOW_HEIGHT);
             querySectionLP.setMargins(searchBarLeftMargin, searchBarTopMargin,
                     searchBarRightMargin, 0);
-            dividerLP.setMargins(searchBarLeftMargin + cardPadding, 0,
-                    searchBarRightMargin + cardPadding,
-                    ((MarginLayoutParams) mDivider.getLayoutParams()).bottomMargin);
             suggestListSectionLP.setMargins(searchBarLeftMargin, 0, searchBarRightMargin, 0);
             mQuerySection.setLayoutParams(querySectionLP);
-            mDivider.setLayoutParams(dividerLP);
-            mSuggestionsSection.setLayoutParams(suggestListSectionLP);
+//            mSuggestionsSection.setLayoutParams(suggestListSectionLP);
 
             setQueryTextSize(a.getDimensionPixelSize(R.styleable.FloatingSearchView_floatingSearch_searchInputTextSize,
                     ATTRS_QUERY_TEXT_SIZE_SP_DEFAULT));
@@ -528,8 +491,6 @@ public class FloatingSearchView extends FrameLayout {
                     , Util.getColor(getContext(), R.color.overflow_icon_color)));
             setMenuItemIconColor(a.getColor(R.styleable.FloatingSearchView_floatingSearch_menuItemIconColor
                     , Util.getColor(getContext(), R.color.menu_icon_color)));
-            setDividerColor(a.getColor(R.styleable.FloatingSearchView_floatingSearch_dividerColor
-                    , Util.getColor(getContext(), R.color.divider)));
             setClearBtnColor(a.getColor(R.styleable.FloatingSearchView_floatingSearch_clearBtnColor
                     , Util.getColor(getContext(), R.color.clear_btn_color)));
             int viewTextColor = a.getColor(R.styleable.FloatingSearchView_floatingSearch_viewTextColor
@@ -887,19 +848,6 @@ public class FloatingSearchView extends FrameLayout {
         mSearchInputHintColor = color;
         if (mSearchInput != null) {
             mSearchInput.setHintTextColor(color);
-        }
-    }
-
-    /**
-     * Sets the color of the search divider that
-     * divides the search section from the suggestions.
-     *
-     * @param color the color to be applied the divider.
-     */
-    public void setDividerColor(int color) {
-        mDividerColor = color;
-        if (mDivider != null) {
-            mDivider.setBackgroundColor(mDividerColor);
         }
     }
 
@@ -1365,9 +1313,13 @@ public class FloatingSearchView extends FrameLayout {
         });
         mSuggestionsList.setAdapter(mSuggestionsAdapter);//workaround to avoid list retaining scroll pos
         mSuggestionsList.setAlpha(0);
-        mSuggestionsAdapter.swapData(newSearchSuggestions);
+        if (canSwapData(newSearchSuggestions)) {
+            mSuggestionsAdapter.swapData(newSearchSuggestions);
+        }
+    }
 
-        mDivider.setVisibility(!newSearchSuggestions.isEmpty() ? View.VISIBLE : View.GONE);
+    private boolean canSwapData(final List<? extends SearchSuggestion> newSearchSuggestions) {
+        return newSearchSuggestions != null && newSearchSuggestions.size() > 0;
     }
 
     //returns true if the suggestion items occupy the full RecyclerView's height, false otherwise
@@ -1383,8 +1335,7 @@ public class FloatingSearchView extends FrameLayout {
         int addedTranslationYForShadowOffsets = (diff <= cardTopBottomShadowPadding) ?
                 -(cardTopBottomShadowPadding - diff) :
                 diff < (mSuggestionListContainer.getHeight() - cardTopBottomShadowPadding) ? cardRadiusSize : 0;
-        final float newTranslationY = -mSuggestionListContainer.getHeight() +
-                visibleSuggestionHeight + addedTranslationYForShadowOffsets;
+        final float newTranslationY = visibleSuggestionHeight == 0 ? - mSuggestionListContainer.getHeight() : 0;
 
         //todo go over
         final float fullyInvisibleTranslationY = -mSuggestionListContainer.getHeight() + cardRadiusSize;
@@ -1829,7 +1780,6 @@ public class FloatingSearchView extends FrameLayout {
         savedState.leftIconColor = mLeftActionIconColor;
         savedState.clearBtnColor = mClearBtnColor;
         savedState.suggestionUpBtnColor = mSuggestionTextColor;
-        savedState.dividerColor = mDividerColor;
         savedState.menuId = mMenuId;
         savedState.leftActionMode = mLeftActionMode;
         savedState.queryTextSize = mQueryTextSize;
@@ -1864,7 +1814,6 @@ public class FloatingSearchView extends FrameLayout {
         setLeftActionIconColor(savedState.leftIconColor);
         setClearBtnColor(savedState.clearBtnColor);
         setSuggestionRightIconColor(savedState.suggestionUpBtnColor);
-        setDividerColor(savedState.dividerColor);
         setLeftActionMode(savedState.leftActionMode);
         setDimBackground(savedState.dimBackground);
         setCloseSearchOnKeyboardDismiss(savedState.dismissOnSoftKeyboardDismiss);

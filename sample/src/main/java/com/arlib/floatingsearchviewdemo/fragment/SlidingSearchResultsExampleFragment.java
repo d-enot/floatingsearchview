@@ -181,7 +181,6 @@ public class SlidingSearchResultsExampleFragment extends BaseExampleFragment {
                     mSearchView.setMenuItemIconColor(Color.parseColor("#e9e9e9"));
                     mSearchView.setLeftActionIconColor(Color.parseColor("#e9e9e9"));
                     mSearchView.setClearBtnColor(Color.parseColor("#e9e9e9"));
-                    mSearchView.setDividerColor(Color.parseColor("#BEBEBE"));
                     mSearchView.setLeftActionIconColor(Color.parseColor("#e9e9e9"));
                 } else {
 
